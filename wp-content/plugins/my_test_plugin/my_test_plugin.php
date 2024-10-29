@@ -51,7 +51,7 @@ function my_plugin_deactivation() {
 function my_custom_scripts() {
     $path_js = plugins_url('js/main.js', __FILE__);
     $path_style = plugins_url('css/style.css', __FILE__);
-    $dep = array('jquery');
+    $dep = array('jquery'); // this is dependencies. we can passing multiple js files by ',' separeted
     $js_ver = filemtime(plugin_dir_path(__FILE__).'js/main.js');
     $style_ver = filemtime(plugin_dir_path(__FILE__).'css/style.css');
 
@@ -59,7 +59,7 @@ function my_custom_scripts() {
         wp_enqueue_style('my-custom-style', $path_style, '', $style_ver);
     }
 
-    wp_enqueue_script('my-custom-js', $path_js, $dep, $js_ver, true);
+    wp_enqueue_script('my-custom-js', $path_js, $dep, $js_ver, true); // true for including in footer
     wp_add_inline_script('my-custom-js', 'var is_login = '.is_user_logged_in().';', 'before');
 
 }
@@ -70,8 +70,10 @@ add_action('admin_enqueue_scripts', 'my_custom_scripts');
 function my_shortcode($atts) {
     $atts = array_change_key_case((array) $atts, CASE_LOWER);
     
+    // Default value pass if argument not passing from admin (shortcode using page)
+    // we can pass multiple default value also
     $atts = shortcode_atts(array(
-        'type' => 'img-gallery'
+        'type' => 'img-gallery' // this is default value
     ), $atts);
 
     include $atts['type'].'.php';
@@ -111,11 +113,13 @@ function my_post_info() {
 
 add_shortcode('my-post-info', 'my_post_info');
 
+// Post Views Counter
+
 function head_fun() {
     if(is_singular()) {
         global $post;
         
-        $views = get_post_meta($post->ID, 'views', true);
+        $views = get_post_meta($post->ID, 'views', true); // true means return value else it return array
         
         if($views == '') {
             add_post_meta($post->ID, 'views', 1);
@@ -136,13 +140,15 @@ function views_count() {
 }
 add_shortcode('views-count', 'views_count');
 
+// We also use meta_query in WP_Query. like - tax_query in WP_Query
+
 
 // Create custom post type
 
 function events_custom_post() {
     $labels = array(
         'name' => 'Events',
-        'singula_name' => 'Event'
+        'singular_name' => 'Event'
     );
     $supports = array('title', 'editor', 'thumbnail', 'supports', 'excerpt');
     $options = array(
@@ -154,7 +160,7 @@ function events_custom_post() {
         'supports' => $supports,
         'menu_position' => 6,
         'taxonomies' => array('event_categories'),
-        'publicly_queriable' => true
+        'publicly_queryable' => true
     );
     register_post_type('events', $options);
 }
@@ -170,7 +176,7 @@ function custom_event_categories() {
     );
     $options = array(
         'labels' => $labels,
-        'hierarchical' => true,
+        'hierarchical' => true, // for tag creation it should be false and all things are same
         'rewrite' => array('slug' => 'event-category'),
         'show_in_rest' => true
     );
@@ -223,4 +229,81 @@ function save_my_meta_data($post_id) {
 
 add_action('save_post', 'save_my_meta_data');
 
+// Create User with Registration
+
+function my_register_form() {
+    ob_start();
+    include 'public/register.php';    
+    return ob_get_clean();
+}
+
+add_shortcode('my-register-form', 'my_register_form');
+
+// User Login
+
+function my_login_form() {
+    ob_start();
+    include 'public/login.php';    
+    return ob_get_clean();
+}
+
+add_shortcode('my-login-form', 'my_login_form');
+
+function my_login() {
+    if(isset($_POST['userlogin'])){
+        $userName = esc_sql($_POST['login-username']);
+        $userPass = esc_sql($_POST['login-pass']);
+        $credential = array(
+            'user_login' => $userName,
+            'user_password' => $userPass
+        );
+        $user = wp_signon($credential);
+        if(!is_wp_error($user)) {
+            if($user->roles[0] == "administrator") {
+                wp_redirect(admin_url());
+                exit;
+            } else {
+                wp_redirect(site_url('profile'));
+                exit;
+            }
+        } else {
+            echo $user->get_error_message();
+        }
+    }
+}
+
+add_action('template_redirect', 'my_login');
+
+// Profile
+
+function my_profile() {
+    ob_start();
+    include 'public/profile.php';    
+    return ob_get_clean();
+}
+
+add_shortcode('my-profile', 'my_profile');
+
+// Url redirection by login check
+
+function my_check_redirect() {
+    $is_user_loged_in = is_user_logged_in();
+
+    if($is_user_loged_in && (is_page('login') || is_page('register'))) {
+        wp_redirect(site_url('profile'));
+        exit;
+    } else if(!$is_user_loged_in && is_page('profile')){
+        wp_redirect(site_url('login'));
+        exit;
+    }
+}
+
+add_action('template_redirect', 'my_check_redirect');
+
+function redirect_after_logout() {
+    wp_redirect(site_url('login'));
+    exit;
+}
+
+add_action('wp_logout', 'redirect_after_logout');
 ?>

@@ -35,6 +35,7 @@ the_post();
     </div>
     
   </section>
+ 
 <?php
 get_footer();
 ?>

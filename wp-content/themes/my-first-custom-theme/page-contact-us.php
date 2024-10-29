@@ -53,7 +53,7 @@ get_header('template');
             url : link,
             type : 'post',
             data : formData,
-            processData: false,
+            processData : false,
             contentType : false,
             success : function(result) {
                 // alert(result.data);
